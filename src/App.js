@@ -20,8 +20,8 @@ function hexagonPath(cx, cy, r, rot = 0) {
 function benzeneRing(cx, cy, r, rot = 0) {
   // Hexágono con círculo central
   return [
-    <path key="hex" d={hexagonPath(cx, cy, r, rot)} stroke="#8e24aa" strokeWidth="2" fill="#ede7f6" />,
-    <circle key="circ" cx={cx} cy={cy} r={r * 0.4} fill="#d1c4e9" stroke="#8e24aa" strokeWidth="1" />
+    <path key="hex" d={hexagonPath(cx, cy, r, rot)} stroke="#8e24aa" strokeWidth="4" fill="#ede7f6" />,
+    <circle key="circ" cx={cx} cy={cy} r={r * 0.4} fill="#d1c4e9" stroke="#8e24aa" strokeWidth="2" />
   ];
 }
 
@@ -60,10 +60,16 @@ function App() {
   const [hovered, setHovered] = useState(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
+  // Scroll sticky y progress relativo al contenedor
   useEffect(() => {
     const onScroll = () => {
-      const maxScroll = document.body.scrollHeight - window.innerHeight;
-      setProgress(maxScroll > 0 ? window.scrollY / maxScroll : 0);
+      const sticky = document.getElementById('sticky-scroll');
+      if (!sticky) return;
+      const rect = sticky.getBoundingClientRect();
+      const winH = window.innerHeight;
+      const total = rect.height - winH;
+      const scrolled = Math.min(Math.max(-rect.top, 0), total);
+      setProgress(total > 0 ? scrolled / total : 0);
     };
     window.addEventListener("scroll", onScroll);
     onScroll();
@@ -150,7 +156,7 @@ function App() {
   }
 
   return (
-    <div style={{ minHeight: '300vh', background: '#fff' }} onMouseMove={handleMouseMove}>
+    <div id="sticky-scroll" style={{ height: '3500px', position: 'relative', background: '#fff' }} onMouseMove={handleMouseMove}>
       {/* Texto auxiliar fijo */}
       <div style={{position:'fixed',top:10,left:0,right:0,zIndex:100, textAlign:'center',fontSize:'1.1em',color:'#444',background:'rgba(255,255,255,0.85)',padding:'0.5em 0',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         Desplázate hacia abajo para ver la transformación de biomasa en biochar. Haz clic en los poros, cenizas o enlaces para ver detalles. Pasa el mouse sobre los elementos para ver su nombre.
@@ -186,116 +192,121 @@ function App() {
           {HOVER_LABELS[hovered]}
         </div>
       )}
-      {/* SVG multietapa */}
-      <div style={{ width: "100%", maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1, paddingTop: 80 }}>
+      {/* SVG sticky y centrado */}
+      <div style={{
+        position: "sticky", top: 0, width: "100%", height: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1
+      }}>
         <svg
           id="biochar-process"
-          viewBox="0 0 800 400"
-          preserveAspectRatio="xMidYMid meet"
-          style={{ width: '100%', height: '400px', display: 'block' }}
+          viewBox="0 0 1200 1200"
+          style={{ width: "90vw", height: "90vh", background: "#fff" }}
         >
           {/* 1. Biomasa cruda */}
           <g id="stage-1" opacity={op1}>
-            {/* Celulosa: tres hexágonos enlazados */}
+            {/* Celulosa: tres hexágonos grandes y centrados */}
             <g>
-              <path d={hexagonPath(hex1x, hex1y, 28)} fill={hexFill} stroke={hexColor} strokeWidth={3}
+              <path d={hexagonPath(400, 700, 120)} fill={hexFill} stroke={hexColor} strokeWidth={10}
                 onMouseEnter={() => setHovered('hex1')} onMouseLeave={() => setHovered(null)} />
-              <path d={hexagonPath(hex2x, hex2y, 28)} fill={hexFill} stroke={hexColor} strokeWidth={3}
+              <path d={hexagonPath(600, 700, 120)} fill={hexFill} stroke={hexColor} strokeWidth={10}
                 onMouseEnter={() => setHovered('hex2')} onMouseLeave={() => setHovered(null)} />
-              <path d={hexagonPath(hex3x, hex3y, 28)} fill={hexFill} stroke={hexColor} strokeWidth={3}
+              <path d={hexagonPath(800, 700, 120)} fill={hexFill} stroke={hexColor} strokeWidth={10}
                 onMouseEnter={() => setHovered('hex3')} onMouseLeave={() => setHovered(null)} />
               {/* enlaces entre hexágonos */}
-              <line x1={hex1x+24} y1={hex1y+10} x2={hex2x-24} y2={hex2y-10} stroke={hexColor} strokeWidth={5} />
-              <line x1={hex2x+24} y1={hex2y+10} x2={hex3x-24} y2={hex3y-10} stroke={hexColor} strokeWidth={5} />
+              <line x1={520} y1={700} x2={480} y2={700} stroke={hexColor} strokeWidth={18} />
+              <line x1={720} y1={700} x2={680} y2={700} stroke={hexColor} strokeWidth={18} />
             </g>
-            {/* Hemicelulosa: ramas con nodos */}
+            {/* Hemicelulosa: ramas grandes */}
             <g>
-              <line x1={450} y1={300} x2={450+hemiLen} y2={300-hemiLen*Math.tan(hemiAngle*Math.PI/180)} stroke={hemiColor} strokeWidth={5}
+              <line x1={900} y1={400} x2={900+hemiLen*10} y2={400-hemiLen*Math.tan(hemiAngle*Math.PI/180)*10} stroke={hemiColor} strokeWidth={16}
                 onMouseEnter={() => setHovered('hemi1')} onMouseLeave={() => setHovered(null)} />
-              <circle cx={450+hemiLen} cy={300-hemiLen*Math.tan(hemiAngle*Math.PI/180)} r={8} fill={hemiFill} stroke={hemiColor} strokeWidth={2}
+              <circle cx={900+hemiLen*10} cy={400-hemiLen*Math.tan(hemiAngle*Math.PI/180)*10} r={32} fill={hemiFill} stroke={hemiColor} strokeWidth={8}
                 onMouseEnter={() => setHovered('hemi1')} onMouseLeave={() => setHovered(null)} />
-              <line x1={450} y1={300} x2={450+hemiLen} y2={300+hemiLen*Math.tan(hemiAngle*Math.PI/180)} stroke={hemiColor} strokeWidth={5}
+              <line x1={900} y1={400} x2={900+hemiLen*10} y2={400+hemiLen*Math.tan(hemiAngle*Math.PI/180)*10} stroke={hemiColor} strokeWidth={16}
                 onMouseEnter={() => setHovered('hemi2')} onMouseLeave={() => setHovered(null)} />
-              <circle cx={450+hemiLen} cy={300+hemiLen*Math.tan(hemiAngle*Math.PI/180)} r={8} fill={hemiFill} stroke={hemiColor} strokeWidth={2}
+              <circle cx={900+hemiLen*10} cy={400+hemiLen*Math.tan(hemiAngle*Math.PI/180)*10} r={32} fill={hemiFill} stroke={hemiColor} strokeWidth={8}
                 onMouseEnter={() => setHovered('hemi2')} onMouseLeave={() => setHovered(null)} />
             </g>
-            {/* Lignina: dos anillos aromáticos fusionados */}
+            {/* Lignina: anillos aromáticos grandes y alineados */}
             <g>
-              <g onMouseEnter={() => setHovered('lignin1')} onMouseLeave={() => setHovered(null)}>{benzeneRing(670, 290, 22, 0)}</g>
-              <g onMouseEnter={() => setHovered('lignin2')} onMouseLeave={() => setHovered(null)}>{benzeneRing(690, 310, 22, Math.PI/6)}</g>
-              <ellipse cx={680} cy={300} rx={18} ry={8} fill={ligninColor} />
+              <g onMouseEnter={() => setHovered('lignin1')} onMouseLeave={() => setHovered(null)}>{benzeneRing(900, 900, 80, 0)}</g>
+              <g onMouseEnter={() => setHovered('lignin2')} onMouseLeave={() => setHovered(null)}>{benzeneRing(1050, 950, 80, Math.PI/6)}</g>
+              <ellipse cx={975} cy={925} rx={60} ry={30} fill={ligninColor} />
             </g>
-            <text x="20" y="40" fill="#333" fontSize="24">Biomasa</text>
+            <text x="100" y="200" fill="#333" fontSize="64">Biomasa</text>
           </g>
           {/* 2. Pirólisis */}
           <g id="stage-2" opacity={op2}>
             {/* Fragmentos de celulosa */}
             <g>
-              <path d={hexagonPath(hex1x+40, hex1y+60, 18)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={2}
+              <path d={hexagonPath(400, 900, 80)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={8}
                 onMouseEnter={() => setHovered('hex1')} onMouseLeave={() => setHovered(null)} />
-              <path d={hexagonPath(hex2x-30, hex2y+40, 18)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={2}
+              <path d={hexagonPath(600, 950, 80)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={8}
                 onMouseEnter={() => setHovered('hex2')} onMouseLeave={() => setHovered(null)} />
-              <path d={hexagonPath(hex3x+20, hex3y-30, 18)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={2}
+              <path d={hexagonPath(800, 900, 80)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={8}
                 onMouseEnter={() => setHovered('hex3')} onMouseLeave={() => setHovered(null)} />
             </g>
             {/* Hemicelulosa: ramas encogidas */}
             <g>
-              <line x1={450} y1={300} x2={450+hemiLen*0.5} y2={300-hemiLen*Math.tan(hemiAngle*Math.PI/180)*0.5} stroke="#81d4fa" strokeWidth={3}
+              <line x1={900} y1={400} x2={900+hemiLen*5} y2={400-hemiLen*Math.tan(hemiAngle*Math.PI/180)*5} stroke="#81d4fa" strokeWidth={8}
                 onMouseEnter={() => setHovered('hemi1')} onMouseLeave={() => setHovered(null)} />
-              <circle cx={450+hemiLen*0.5} cy={300-hemiLen*Math.tan(hemiAngle*Math.PI/180)*0.5} r={5} fill="#e1f5fe" stroke="#81d4fa" strokeWidth={1}
+              <circle cx={900+hemiLen*5} cy={400-hemiLen*Math.tan(hemiAngle*Math.PI/180)*5} r={16} fill="#e1f5fe" stroke="#81d4fa" strokeWidth={4}
                 onMouseEnter={() => setHovered('hemi1')} onMouseLeave={() => setHovered(null)} />
-              <line x1={450} y1={300} x2={450+hemiLen*0.5} y2={300+hemiLen*Math.tan(hemiAngle*Math.PI/180)*0.5} stroke="#81d4fa" strokeWidth={3}
+              <line x1={900} y1={400} x2={900+hemiLen*5} y2={400+hemiLen*Math.tan(hemiAngle*Math.PI/180)*5} stroke="#81d4fa" strokeWidth={8}
                 onMouseEnter={() => setHovered('hemi2')} onMouseLeave={() => setHovered(null)} />
-              <circle cx={450+hemiLen*0.5} cy={300+hemiLen*Math.tan(hemiAngle*Math.PI/180)*0.5} r={5} fill="#e1f5fe" stroke="#81d4fa" strokeWidth={1}
+              <circle cx={900+hemiLen*5} cy={400+hemiLen*Math.tan(hemiAngle*Math.PI/180)*5} r={16} fill="#e1f5fe" stroke="#81d4fa" strokeWidth={4}
                 onMouseEnter={() => setHovered('hemi2')} onMouseLeave={() => setHovered(null)} />
             </g>
             {/* Lignina: anillos deformados */}
             <g>
-              <g onMouseEnter={() => setHovered('lignin1')} onMouseLeave={() => setHovered(null)}>{benzeneRing(670, 290, 15+8*(1-ligninProg), 0)}</g>
-              <g onMouseEnter={() => setHovered('lignin2')} onMouseLeave={() => setHovered(null)}>{benzeneRing(690, 310, 15+8*(1-ligninProg), Math.PI/6)}</g>
-              <ellipse cx={680} cy={300} rx={12+6*(1-ligninProg)} ry={5+3*(1-ligninProg)} fill={ligninColor} />
+              <g onMouseEnter={() => setHovered('lignin1')} onMouseLeave={() => setHovered(null)}>{benzeneRing(900, 900, 60+32*(1-ligninProg), 0)}</g>
+              <g onMouseEnter={() => setHovered('lignin2')} onMouseLeave={() => setHovered(null)}>{benzeneRing(1050, 950, 60+32*(1-ligninProg), Math.PI/6)}</g>
+              <ellipse cx={975} cy={925} rx={45+24*(1-ligninProg)} ry={22+12*(1-ligninProg)} fill={ligninColor} />
             </g>
             {/* Burbujas de gas animadas */}
-            <circle className="volatile" cx="420" cy={volatileY1} r="6" fill="#B0BEC5" opacity={volatileOpacity1} />
-            <circle className="volatile" cx="460" cy={volatileY2} r="5" fill="#B0BEC5" opacity={volatileOpacity2} />
-            <circle className="volatile" cx="500" cy={volatileY3} r="4" fill="#B0BEC5" opacity={volatileOpacity3} />
+            <circle className="volatile" cx="600" cy={volatileY1*3} r="24" fill="#B0BEC5" opacity={volatileOpacity1} />
+            <circle className="volatile" cx="700" cy={volatileY2*3} r="20" fill="#B0BEC5" opacity={volatileOpacity2} />
+            <circle className="volatile" cx="800" cy={volatileY3*3} r="16" fill="#B0BEC5" opacity={volatileOpacity3} />
             {/* Capa oscura incipiente */}
-            <path d="M0,350 Q400,280 800,350 L800,400 L0,400 Z" fill="#424242" opacity={clamp((progress-0.3)*1.5,0,0.7)} />
-            <text x="20" y="40" fill="#333" fontSize="24">Pirólisis</text>
+            <path d="M0,1100 Q600,900 1200,1100 L1200,1200 L0,1200 Z" fill="#424242" opacity={clamp((progress-0.3)*1.5,0,0.7)} />
+            <text x="100" y="200" fill="#333" fontSize="64">Pirólisis</text>
           </g>
           {/* 3. Biochar final */}
           <g id="stage-3" opacity={op3}>
             {/* Masa amorfa negra */}
-            <path d="M200,360 Q300,260 400,360 Q500,460 600,360 T800,370 L800,400 L200,400 Z" fill="#212121" opacity="0.9" />
+            <path d="M300,1100 Q500,700 900,1100 Q1100,1500 1200,1100 T1200,1200 L0,1200 Z" fill="#212121" opacity="0.9" />
             {/* Poros (clickeables, borde doble y textura) */}
             {POROS.map(p => (
               <g key={p.id} style={{ cursor: "pointer" }} onClick={() => setZoomed(p.id)}
                 onMouseEnter={() => setHovered(p.id)} onMouseLeave={() => setHovered(null)}>
-                <circle cx={p.cx} cy={p.cy} r={p.r * poroScale} fill="#e0e0e0" stroke="#333" strokeWidth={3} />
-                <circle cx={p.cx} cy={p.cy} r={p.r * 0.6 * poroScale} fill="#fff" stroke="#bdbdbd" strokeWidth={1.5} />
-                <circle cx={p.cx} cy={p.cy} r={p.r * 0.3 * poroScale} fill="#f5f5f5" />
+                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 3 * poroScale} fill="#e0e0e0" stroke="#333" strokeWidth={12} />
+                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 1.8 * poroScale} fill="#fff" stroke="#bdbdbd" strokeWidth={6} />
+                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 0.9 * poroScale} fill="#f5f5f5" />
               </g>
             ))}
             {/* Partículas de ceniza (clickeables, formas irregulares) */}
             {CENIZAS.map(c => (
-              <polygon key={c.id} points={c.points} fill="#f5f5f5" stroke="#bdbdbd" strokeWidth={2} opacity={cenizaOp} style={{ cursor: "pointer" }} onClick={() => setZoomed(c.id)}
+              <polygon key={c.id} points={c.points.split(' ').map(pt=>{
+                const [x,y]=pt.split(',');
+                return `${parseInt(x)*3},${parseInt(y)*3}`;
+              }).join(' ')} fill="#f5f5f5" stroke="#bdbdbd" strokeWidth={8} opacity={cenizaOp} style={{ cursor: "pointer" }} onClick={() => setZoomed(c.id)}
                 onMouseEnter={() => setHovered(c.id)} onMouseLeave={() => setHovered(null)} />
             ))}
             {/* Restos de enlaces colgando (clickeables, fractura) */}
             {ENLACES.map(e => (
               <g key={e.id} style={{ cursor: "pointer" }} onClick={() => setZoomed(e.id)}
                 onMouseEnter={() => setHovered(e.id)} onMouseLeave={() => setHovered(null)}>
-                <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke="#424242" strokeWidth={3} opacity={enlaceOp} />
-                <circle cx={e.x2} cy={e.y2} r={3} fill="#fff" stroke="#424242" strokeWidth={1} />
-                <path d={`M${e.x2-3},${e.y2-3} Q${e.x2},${e.y2-8} ${e.x2+3},${e.y2-3}`} stroke="#bdbdbd" strokeWidth={1} fill="none" />
+                <line x1={e.x1*3} y1={e.y1*3} x2={e.x2*3} y2={e.y2*3} stroke="#424242" strokeWidth={12} opacity={enlaceOp} />
+                <circle cx={e.x2*3} cy={e.y2*3} r={12} fill="#fff" stroke="#424242" strokeWidth={4} />
+                <path d={`M${e.x2*3-12},${e.y2*3-12} Q${e.x2*3},${e.y2*3-32} ${e.x2*3+12},${e.y2*3-12}`} stroke="#bdbdbd" strokeWidth={4} fill="none" />
               </g>
             ))}
-            <text x="20" y="40" fill="#333" fontSize="24">Biochar</text>
+            <text x="100" y="200" fill="#333" fontSize="64">Biochar</text>
           </g>
         </svg>
       </div>
       {/* Relleno para forzar scroll */}
-      <div style={{ height: '180vh' }} />
+      <div style={{ height: '3500px' }} />
       {/* Modal de zoom */}
       {zoomed && (
         <div className="zoom-modal" onClick={()=>setZoomed(null)}>
