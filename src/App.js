@@ -20,7 +20,7 @@ function hexagonPath(cx, cy, r, rot = 0) {
 function benzeneRing(cx, cy, r, rot = 0) {
   // Hexágono con círculo central
   return [
-    <path key="hex" d={hexagonPath(cx, cy, r, rot)} stroke="#8e24aa" strokeWidth="4" fill="#ede7f6" />,
+    <path key="hex" d={hexagonPath(cx, cy, r, rot)} stroke="#8e24aa" strokeWidth="4" fill="#ede7f6" />, // morado sutil
     <circle key="circ" cx={cx} cy={cy} r={r * 0.4} fill="#d1c4e9" stroke="#8e24aa" strokeWidth="2" />
   ];
 }
@@ -68,7 +68,9 @@ function App() {
       const rect = sticky.getBoundingClientRect();
       const winH = window.innerHeight;
       const total = rect.height - winH;
-      const scrolled = Math.min(Math.max(-rect.top, 0), total);
+      let scrolled = Math.min(Math.max(-rect.top, 0), total);
+      // No permitir scroll más allá del final de la animación
+      if (scrolled / total > 1) scrolled = total;
       setProgress(total > 0 ? scrolled / total : 0);
     };
     window.addEventListener("scroll", onScroll);
@@ -84,46 +86,49 @@ function App() {
   ];
 
   // Opacidades y animaciones para cada etapa
-  const op1 = clamp(1 - progress * 3, 0, 1);
-  const op2 = clamp((progress - 0.3) * 3, 0, 1) * clamp((0.7 - progress) * 3, 0, 1);
-  const op3 = clamp((progress - 0.7) * 3, 0, 1);
+  // Limita progress a 1
+  const p = clamp(progress, 0, 1);
+  const op1 = clamp(1 - p * 3, 0, 1);
+  const op2 = clamp((p - 0.3) * 3, 0, 1) * clamp((0.7 - p) * 3, 0, 1);
+  // Última etapa: completamente opaca y negra al final
+  const op3 = p >= 1 ? 1 : clamp((p - 0.7) * 3, 0, 1);
 
   // Animación de burbujas de gas
-  const volatileOpacity1 = clamp((progress - 0.3) * 5, 0, 1);
-  const volatileOpacity2 = clamp((progress - 0.35) * 5, 0, 1);
-  const volatileOpacity3 = clamp((progress - 0.4) * 5, 0, 1);
-  const volatileY1 = 260 - clamp((progress - 0.3) * 150, 0, 150);
-  const volatileY2 = 240 - clamp((progress - 0.35) * 150, 0, 150);
-  const volatileY3 = 220 - clamp((progress - 0.4) * 150, 0, 150);
+  const volatileOpacity1 = clamp((p - 0.3) * 5, 0, 1);
+  const volatileOpacity2 = clamp((p - 0.35) * 5, 0, 1);
+  const volatileOpacity3 = clamp((p - 0.4) * 5, 0, 1);
+  const volatileY1 = 260 - clamp((p - 0.3) * 150, 0, 150);
+  const volatileY2 = 240 - clamp((p - 0.35) * 150, 0, 150);
+  const volatileY3 = 220 - clamp((p - 0.4) * 150, 0, 150);
 
   // Animación de hexágonos de celulosa (separación y desorden, color y opacidad)
-  const hexProg = clamp((progress - 0.1) * 4, 0, 1);
-  const hex1x = 120 + 60 * hexProg;
-  const hex1y = 250 + 30 * hexProg;
-  const hex2x = 180 - 40 * hexProg;
-  const hex2y = 270 + 50 * hexProg;
-  const hex3x = 240 + 30 * hexProg;
-  const hex3y = 250 - 40 * hexProg;
+  const hexProg = clamp((p - 0.1) * 4, 0, 1);
   const hexColor = `rgba(56,142,60,${1-0.5*hexProg})`;
   const hexFill = `rgba(232,245,233,${1-0.5*hexProg})`;
 
   // Hemicelulosa: ramas se encogen y dispersan, color y opacidad
-  const hemiProg = clamp((progress - 0.15) * 4, 0, 1);
+  const hemiProg = clamp((p - 0.15) * 4, 0, 1);
   const hemiLen = 40 - 30 * hemiProg;
   const hemiAngle = 20 * hemiProg;
   const hemiColor = `rgba(3,155,229,${1-0.5*hemiProg})`;
   const hemiFill = `rgba(179,229,252,${1-0.5*hemiProg})`;
 
   // Lignina: anillos se deforman y oscurecen
-  const ligninProg = clamp((progress - 0.2) * 4, 0, 1);
+  const ligninProg = clamp((p - 0.2) * 4, 0, 1);
   const ligninColor = `rgba(142,36,170,${0.6 - 0.4 * ligninProg})`;
 
-  // Poros: aparecen y crecen
-  const poroScale = op3;
-  // Cenizas: aparecen y dispersan
-  const cenizaOp = op3;
-  // Enlaces rotos: aparecen progresivamente
-  const enlaceOp = op3;
+  // Define aquí, antes del return:
+  const extraHex = [
+    { x: 500, y: 700, r: 60 },
+    { x: 700, y: 700, r: 60 },
+    { x: 550, y: 800, r: 40 },
+    { x: 650, y: 800, r: 40 },
+  ];
+  const extraBubbles = [
+    { cx: 650, base: 900, r: 18, delay: 0.45 },
+    { cx: 750, base: 950, r: 14, delay: 0.5 },
+    { cx: 850, base: 900, r: 10, delay: 0.55 },
+  ];
 
   // Modal zoom: qué mostrar
   let zoomSvg = null, zoomLabel = "";
@@ -164,7 +169,7 @@ function App() {
       {/* Barra de temperatura a la izquierda */}
       <div className="temp-scale">
         <div className="scale-track">
-          <div className="scale-fill" style={{ height: `${clamp(progress, 0, 1) * 100}%` }} />
+          <div className="scale-fill" style={{ height: `${clamp(p, 0, 1) * 100}%` }} />
           <ul className="ticks">
             <li style={{ bottom: '0%' }}>25 °C</li>
             <li style={{ bottom: '33%' }}>200 °C</li>
@@ -178,7 +183,7 @@ function App() {
         <div
           key={i}
           className="tooltip"
-          style={{ opacity: progress > tt.threshold ? 1 : 0, top: tt.top }}
+          style={{ opacity: p > tt.threshold ? 1 : 0, top: tt.top }}
         >
           {tt.text}
         </div>
@@ -195,16 +200,17 @@ function App() {
       {/* SVG sticky y centrado */}
       <div style={{
         position: "sticky", top: 0, width: "100%", height: "100vh",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1,
+        padding: '2vw', boxSizing: 'border-box'
       }}>
         <svg
           id="biochar-process"
           viewBox="0 0 1200 1200"
-          style={{ width: "90vw", height: "90vh", background: "#fff" }}
+          style={{ width: "95vw", height: "95vh", background: "#fff", maxWidth: 1200, maxHeight: 1200 }}
         >
           {/* 1. Biomasa cruda */}
           <g id="stage-1" opacity={op1}>
-            {/* Celulosa: tres hexágonos grandes y centrados */}
+            {/* Celulosa: hexágonos grandes y alineados horizontalmente */}
             <g>
               <path d={hexagonPath(400, 700, 120)} fill={hexFill} stroke={hexColor} strokeWidth={10}
                 onMouseEnter={() => setHovered('hex1')} onMouseLeave={() => setHovered(null)} />
@@ -212,6 +218,10 @@ function App() {
                 onMouseEnter={() => setHovered('hex2')} onMouseLeave={() => setHovered(null)} />
               <path d={hexagonPath(800, 700, 120)} fill={hexFill} stroke={hexColor} strokeWidth={10}
                 onMouseEnter={() => setHovered('hex3')} onMouseLeave={() => setHovered(null)} />
+              {/* extra hexágonos intermedios */}
+              {extraHex.map((h, i) => (
+                <path key={i} d={hexagonPath(h.x, h.y, h.r)} fill={hexFill} stroke={hexColor} strokeWidth={6} opacity={clamp(p*2-0.2*i,0,1)*0.7} />
+              ))}
               {/* enlaces entre hexágonos */}
               <line x1={520} y1={700} x2={480} y2={700} stroke={hexColor} strokeWidth={18} />
               <line x1={720} y1={700} x2={680} y2={700} stroke={hexColor} strokeWidth={18} />
@@ -237,7 +247,7 @@ function App() {
           </g>
           {/* 2. Pirólisis */}
           <g id="stage-2" opacity={op2}>
-            {/* Fragmentos de celulosa */}
+            {/* Fragmentos de celulosa y hexágonos intermedios */}
             <g>
               <path d={hexagonPath(400, 900, 80)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={8}
                 onMouseEnter={() => setHovered('hex1')} onMouseLeave={() => setHovered(null)} />
@@ -245,6 +255,9 @@ function App() {
                 onMouseEnter={() => setHovered('hex2')} onMouseLeave={() => setHovered(null)} />
               <path d={hexagonPath(800, 900, 80)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={8}
                 onMouseEnter={() => setHovered('hex3')} onMouseLeave={() => setHovered(null)} />
+              {extraHex.map((h, i) => (
+                <path key={i} d={hexagonPath(h.x+100, h.y+200, h.r*0.7)} fill="#d7ccc8" stroke="#8d6e63" strokeWidth={4} opacity={clamp((p-0.2*i)*2,0,1)*0.7} />
+              ))}
             </g>
             {/* Hemicelulosa: ramas encogidas */}
             <g>
@@ -263,25 +276,28 @@ function App() {
               <g onMouseEnter={() => setHovered('lignin2')} onMouseLeave={() => setHovered(null)}>{benzeneRing(1050, 950, 60+32*(1-ligninProg), Math.PI/6)}</g>
               <ellipse cx={975} cy={925} rx={45+24*(1-ligninProg)} ry={22+12*(1-ligninProg)} fill={ligninColor} />
             </g>
-            {/* Burbujas de gas animadas */}
+            {/* Burbujas de gas animadas, más intermedias */}
             <circle className="volatile" cx="600" cy={volatileY1*3} r="24" fill="#B0BEC5" opacity={volatileOpacity1} />
             <circle className="volatile" cx="700" cy={volatileY2*3} r="20" fill="#B0BEC5" opacity={volatileOpacity2} />
             <circle className="volatile" cx="800" cy={volatileY3*3} r="16" fill="#B0BEC5" opacity={volatileOpacity3} />
+            {extraBubbles.map((b, i) => (
+              <circle key={i} cx={b.cx} cy={b.base - clamp((p-b.delay)*3,0,1)*400} r={b.r} fill="#B0BEC5" opacity={clamp((p-b.delay)*5,0,1)} />
+            ))}
             {/* Capa oscura incipiente */}
-            <path d="M0,1100 Q600,900 1200,1100 L1200,1200 L0,1200 Z" fill="#424242" opacity={clamp((progress-0.3)*1.5,0,0.7)} />
+            <path d="M0,1100 Q600,900 1200,1100 L1200,1200 L0,1200 Z" fill="#424242" opacity={clamp((p-0.3)*1.5,0,0.7)} />
             <text x="100" y="200" fill="#333" fontSize="64">Pirólisis</text>
           </g>
           {/* 3. Biochar final */}
           <g id="stage-3" opacity={op3}>
-            {/* Masa amorfa negra */}
-            <path d="M300,1100 Q500,700 900,1100 Q1100,1500 1200,1100 T1200,1200 L0,1200 Z" fill="#212121" opacity="0.9" />
+            {/* Masa amorfa negra, completamente opaca al final */}
+            <path d="M300,1100 Q500,700 900,1100 Q1100,1500 1200,1100 T1200,1200 L0,1200 Z" fill="#111" opacity={p >= 1 ? 1 : 0.9} />
             {/* Poros (clickeables, borde doble y textura) */}
-            {POROS.map(p => (
-              <g key={p.id} style={{ cursor: "pointer" }} onClick={() => setZoomed(p.id)}
-                onMouseEnter={() => setHovered(p.id)} onMouseLeave={() => setHovered(null)}>
-                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 3 * poroScale} fill="#e0e0e0" stroke="#333" strokeWidth={12} />
-                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 1.8 * poroScale} fill="#fff" stroke="#bdbdbd" strokeWidth={6} />
-                <circle cx={p.cx*3} cy={p.cy*3} r={p.r * 0.9 * poroScale} fill="#f5f5f5" />
+            {POROS.map(por => (
+              <g key={por.id} style={{ cursor: "pointer" }} onClick={() => setZoomed(por.id)}
+                onMouseEnter={() => setHovered(por.id)} onMouseLeave={() => setHovered(null)}>
+                <circle cx={por.cx*3} cy={por.cy*3} r={por.r * 3 * op3} fill="#e0e0e0" stroke="#333" strokeWidth={12} />
+                <circle cx={por.cx*3} cy={por.cy*3} r={por.r * 1.8 * op3} fill="#fff" stroke="#bdbdbd" strokeWidth={6} />
+                <circle cx={por.cx*3} cy={por.cy*3} r={por.r * 0.9 * op3} fill="#f5f5f5" />
               </g>
             ))}
             {/* Partículas de ceniza (clickeables, formas irregulares) */}
@@ -289,19 +305,19 @@ function App() {
               <polygon key={c.id} points={c.points.split(' ').map(pt=>{
                 const [x,y]=pt.split(',');
                 return `${parseInt(x)*3},${parseInt(y)*3}`;
-              }).join(' ')} fill="#f5f5f5" stroke="#bdbdbd" strokeWidth={8} opacity={cenizaOp} style={{ cursor: "pointer" }} onClick={() => setZoomed(c.id)}
+              }).join(' ')} fill="#f5f5f5" stroke="#bdbdbd" strokeWidth={8} opacity={op3} style={{ cursor: "pointer" }} onClick={() => setZoomed(c.id)}
                 onMouseEnter={() => setHovered(c.id)} onMouseLeave={() => setHovered(null)} />
             ))}
             {/* Restos de enlaces colgando (clickeables, fractura) */}
             {ENLACES.map(e => (
               <g key={e.id} style={{ cursor: "pointer" }} onClick={() => setZoomed(e.id)}
                 onMouseEnter={() => setHovered(e.id)} onMouseLeave={() => setHovered(null)}>
-                <line x1={e.x1*3} y1={e.y1*3} x2={e.x2*3} y2={e.y2*3} stroke="#424242" strokeWidth={12} opacity={enlaceOp} />
+                <line x1={e.x1*3} y1={e.y1*3} x2={e.x2*3} y2={e.y2*3} stroke="#424242" strokeWidth={12} opacity={op3} />
                 <circle cx={e.x2*3} cy={e.y2*3} r={12} fill="#fff" stroke="#424242" strokeWidth={4} />
                 <path d={`M${e.x2*3-12},${e.y2*3-12} Q${e.x2*3},${e.y2*3-32} ${e.x2*3+12},${e.y2*3-12}`} stroke="#bdbdbd" strokeWidth={4} fill="none" />
               </g>
             ))}
-            <text x="100" y="200" fill="#333" fontSize="64">Biochar</text>
+            <text x="100" y="200" fill="#fff" fontSize="64">Biochar</text>
           </g>
         </svg>
       </div>
