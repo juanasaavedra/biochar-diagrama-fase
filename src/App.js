@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
-const v = 0
+
 const TEMP_STAGES = [
   { label: 'Biomasa inicial', temp: 25, desc: 'Celulosa ordenada, hemicelulosa ramificada, lignina amorfa' },
   { label: 'Fase intermedia', temp: 300, desc: 'Hemicelulosa se fragmenta, celulosa se desordena, lignina se rompe' },
