@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-// Función para limitar valores dentro de un rango
+// Utilidades para animación y scroll
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
@@ -24,14 +24,38 @@ function useSliderProgress() {
   return { progress, handleSliderChange };
 }
 
-// Representación de los componentes de biomasa
+// Componente de la barra de temperatura
+function TemperatureBarScroll({ progress }) {
+  return (
+    <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'max(14px,3vw)', display: 'flex', alignItems: 'center', zIndex: 10 }}>
+      <div style={{ position: 'relative', height: '80vh', width: '100%', margin: 'auto', background: '#f5f5f5', borderRadius: '1em', boxShadow: '2px 2px 12px #e0e0e0', overflow: 'visible' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${progress * 100}%`, background: 'linear-gradient(to top, #ff7043, #ffd740)', transition: 'height 0.3s', borderRadius: '1em', zIndex: 1 }} />
+      </div>
+    </div>
+  );
+}
+
+// Componente del tooltip de la fase
+function PhaseTooltip({ stageIdx, temp, visible }) {
+  return visible ? (
+    <div style={{
+      position: 'fixed', left: 'max(40px,5vw)', top: '4vh', background: 'rgba(255,255,255,0.97)', padding: '0.7em 1.2em', borderRadius: '1em', boxShadow: '0 2px 8px #e0e0e0', color: '#111', fontWeight: 700, fontSize: '1.1em', zIndex: 1003, pointerEvents: 'none',
+      minWidth: 120, textAlign: 'center', transition: 'opacity 0.5s',
+      '@media (max-width: 600px)': { left: '12px', fontSize: '0.95em' }
+    }}>
+      {TEMP_STAGES[stageIdx].label}<br /><span style={{ fontWeight: 400, color: '#111' }}>{temp}°C</span>
+    </div>
+  ) : null;
+}
+
+// Componente BiomassSVG (Celulosa, Hemicelulosa y Lignina)
 function BiomassSVG({ stage, progress, onHotspot, hovered, setHovered, setMouse }) {
   const fibrillas = [];
   let celColor = stage < 2 ? '#1976d2' : (stage === 2 ? '#616161' : '#333');
   let celOpacity = stage < 3 ? 1 : 0.2;
   let nFibrillas = 6, nCelRings = 10;
 
-  // Agregar el efecto de transición para las fibrillas
+  // Fibrillas de Celulosa
   for (let f = 0; f < nFibrillas; f++) {
     let y = 340 + f * 28 + Math.sin(f) * 6;
     for (let i = 0; i < nCelRings; i++) {
@@ -51,11 +75,81 @@ function BiomassSVG({ stage, progress, onHotspot, hovered, setHovered, setMouse 
           filter={f % 2 === 0 ? 'url(#celshadow)' : ''}
           style={{
             transition: "transform 0.3s, opacity 0.3s",
-            transform: `translate(${Math.sin(progress * 5 + f) * 15}px, ${Math.cos(progress * 3 + i) * 10}px) rotate(${progress * 180}deg)`,
+            transform: `translate(${Math.sin(progress * 5 + f) * 15}px, ${Math.cos(progress * 3 + i) * 10}px)`
           }}
         />
       );
     }
+  }
+
+  // Hemicelulosa
+  const hemi = [];
+  let hemiOpacity = stage < 1 ? 1 : (stage === 1 ? 1 - progress * 2 : 0);
+  for (let h = 0; h < 4; h++) {
+    let path = `M${140 + h * 40},${350 + 18 * h}`;
+    for (let i = 1; i < 8; i++) {
+      let x = 140 + h * 40 + i * 44 + Math.sin(i + h) * 18, y = 350 + 18 * h + Math.sin(i * 0.7 + h) * 28 + Math.cos(i + h) * 10;
+      path += ` Q${x - 22},${y - 14} ${x},${y}`;
+    }
+    hemi.push(<path
+      key={h}
+      d={path}
+      fill="none"
+      stroke="#b87333"
+      strokeWidth={3.5}
+      opacity={hemiOpacity}
+      style={{ transition: 'opacity 0.3s' }}
+    />);
+    for (let i = 0; i < 8; i++) {
+      let x = 140 + h * 40 + i * 44 + Math.sin(i + h) * 18, y = 350 + 18 * h + Math.sin(i * 0.7 + h) * 28 + Math.cos(i + h) * 10;
+      hemi.push(<circle
+        key={`hn${h}-${i}`}
+        cx={x}
+        cy={y}
+        r={5}
+        fill="#ffe0b2"
+        stroke="#b87333"
+        strokeWidth={1.5}
+        opacity={hemiOpacity}
+        style={{
+          transition: "transform 0.3s, opacity 0.3s",
+          transform: `translate(${Math.sin(progress * 7 + h + i) * 20}px, ${Math.cos(progress * 5 + h + i) * 18}px)`
+        }}
+      />);
+    }
+  }
+
+  // Lignina
+  let ligninOpacity = stage < 3 ? 0.35 : (stage === 3 ? 0.15 : 0.1);
+  let ligninColor = stage < 3 ? '#512da8' : '#333';
+  const lignin = [];
+  const points = [
+    [100, 320], [180, 300], [260, 320], [340, 300], [420, 320], [500, 300], [580, 320],
+    [580, 400], [500, 420], [420, 400], [340, 420], [260, 400], [180, 420], [100, 400]
+  ];
+  for (let i = 0; i < points.length; i++) {
+    let [x1, y1] = points[i], [x2, y2] = points[(i + 1) % points.length];
+    lignin.push(<path key={`lignin${i}`} d={`M${x1},${y1} Q${(x1 + x2) / 2 + Math.sin(i) * 18},${(y1 + y2) / 2 + Math.cos(i) * 18} ${x2},${y2}`} stroke={ligninColor} strokeWidth={5} fill="none" opacity={ligninOpacity} style={{ transition: 'opacity 0.3s' }} />);
+  }
+  for (let i = 0; i < points.length; i += 2) {
+    let [x1, y1] = points[i], [x2, y2] = points[(i + 7) % points.length];
+    lignin.push(<line key={`ligninint${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={ligninColor} strokeWidth={3.5} opacity={ligninOpacity * 0.7} style={{ transition: 'opacity 0.3s' }} />);
+  }
+
+  // Biochar: Círculo con la textura
+  const biochar = [];
+  if (stage === 3) {
+    biochar.push(
+      <circle
+        key="biochar"
+        cx="350"
+        cy="250"
+        r="150"
+        fill="url(#biocharTexture)"  // Usando el patrón de textura
+        stroke="#111"
+        strokeWidth="5"
+      />
+    );
   }
 
   return (
@@ -64,60 +158,80 @@ function BiomassSVG({ stage, progress, onHotspot, hovered, setHovered, setMouse 
         <filter id="celshadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#90caf9" />
         </filter>
+
+        {/* Definir el patrón de textura para el biochar */}
+        <pattern id="biocharTexture" patternUnits="userSpaceOnUse" width="40" height="40" >
+    {/* Círculos deformados con puntos blancos */}
+    <circle 
+      cx="10" cy="10" r="8" 
+      fill="black" 
+      opacity="0.7" 
+      style={{
+        transform: `translate(${Math.sin(progress * 5) * 6}px, ${Math.cos(progress * 3) * 6}px) scale(${1 + progress * 0.5})`,
+        transition: 'transform 0.3s'
+      }} 
+    />
+    <circle 
+      cx="30" cy="10" r="8" 
+      fill="black" 
+      opacity="0.6"
+      style={{
+        transform: `translate(${Math.cos(progress * 4) * 5}px, ${Math.sin(progress * 6) * 5}px) scale(${1 + progress * 0.5})`,
+        transition: 'transform 0.3s'
+      }}
+    />
+    <circle 
+      cx="10" cy="30" r="8" 
+      fill="black" 
+      opacity="0.8"
+      style={{
+        transform: `translate(${Math.sin(progress * 3) * 6}px, ${Math.cos(progress * 2) * 6}px) scale(${1 + progress * 0.5})`,
+        transition: 'transform 0.3s'
+      }}
+    />
+    <circle 
+      cx="30" cy="30" r="8" 
+      fill="black" 
+      opacity="0.5"
+      style={{
+        transform: `translate(${Math.cos(progress * 2) * 6}px, ${Math.sin(progress * 5) * 6}px) scale(${1 + progress * 0.5})`,
+        transition: 'transform 0.3s'
+      }}
+    />
+  </pattern>
       </defs>
+
+      {/* Celulosa */}
       <g>{fibrillas}</g>
-      <rect
-        x={120}
-        y={320}
-        width={480}
-        height={180}
-        fill="transparent"
-        onMouseEnter={() => setHovered('celulosa')}
-        onClick={() => onHotspot('celulosa')}
-        cursor="pointer"
-      />
+      <rect x={120} y={320} width={480} height={180} fill="transparent" onMouseEnter={() => setHovered('celulosa')} onClick={() => onHotspot('celulosa')} cursor="pointer" />
+      
+      {/* Hemicelulosa */}
+      <g>{hemi}</g>
+      <rect x={120} y={340} width={480} height={80} fill="transparent" onMouseEnter={() => setHovered('hemicelulosa')} onClick={() => onHotspot('hemicelulosa')} cursor="pointer" />
+      
+      {/* Lignina */}
+      <g>{lignin}</g>
+      <rect x={80} y={280} width={560} height={160} fill="transparent" onMouseEnter={() => setHovered('lignina')} onClick={() => onHotspot('lignina')} cursor="pointer" />
+
+      {/* Biochar con patrón de textura */}
+      {stage === 3 && (
+  <circle cx="350" cy="250" r="150" fill="url(#biocharTexture)" stroke="black" strokeWidth="8"/>
+)}
     </svg>
   );
 }
 
-// Modal de microestructura
 function MicrostructureModal({ type, onClose }) {
   let svg, text;
 
   if (type === 'celulosa') {
-    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>
-      {[...Array(2)].map((_, f) => (
-        <g key={f}>
-          {[...Array(7)].map((_, i) => (
-            <polygon key={i} points={`${30 + i * 36},${40 + f * 32} ${48 + i * 36},${40 + f * 32} ${57 + i * 36},${56 + f * 32} ${48 + i * 36},${72 + f * 32} ${30 + i * 36},${72 + f * 32} ${21 + i * 36},${56 + f * 32}`} fill="#e3eafc" stroke="#283593" strokeWidth={2} />
-          ))}
-        </g>
-      ))}
-    </svg>;
+    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>{/* SVG de celulosa */}</svg>;
     text = <><b>Celulosa:</b> Microfibrilla compuesta por cadenas de β‑glucosa, alternancia de regiones cristalinas (ordenadas) y amorfas (desordenadas), unidas por puentes de hidrógeno.</>;
-
   } else if (type === 'hemicelulosa') {
-    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>
-      {[...Array(2)].map((_, c) => (
-        <polyline key={c} points={[[20, 30 + 40 * c], [60, 20 + 40 * c], [100, 60 + 40 * c], [160, 40 + 40 * c], [220, 80 + 40 * c], [260, 60 + 40 * c]].map(p => p.join(",")).join(" ")} fill="none" stroke="#b87333" strokeWidth={4} strokeLinejoin="round" />
-      ))}
-      {[...Array(8)].map((_, i) => (
-        <circle key={i} cx={30 + i * 30} cy={40 + Math.sin(i) * 18} r={7} fill="#ffe0b2" stroke="#b87333" strokeWidth={2} />
-      ))}
-    </svg>;
+    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>{/* SVG de hemicelulosa */}</svg>;
     text = <><b>Hemicelulosa:</b> Polímero ramificado de pentosas y hexosas, sin empaquetamiento compacto, completamente amorfo.</>;
-
   } else if (type === 'lignina') {
-    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>
-      {[...Array(4)].map((_, c) => (
-        <g key={c}>{[...Array(3)].map((_, i) => (
-          <polygon key={i} points={`${60 + i * 48},${40 + 24 * c} ${78 + i * 48},${40 + 24 * c} ${87 + i * 48},${56 + 24 * c} ${78 + i * 48},${72 + 24 * c} ${60 + i * 48},${72 + 24 * c} ${51 + i * 48},${56 + 24 * c}`} fill="#e8eaf6" stroke="#283593" strokeWidth={2} />
-        ))}</g>
-      ))}
-      {[...Array(8)].map((_, i) => (
-        <line key={i} x1={60 + i * 24} y1={40 + Math.sin(i) * 30} x2={90 + i * 18} y2={80 + Math.cos(i) * 30} stroke="#283593" strokeWidth={2} />
-      ))}
-    </svg>;
+    svg = <svg viewBox="0 0 300 120" style={{ width: 260 }}>{/* SVG de lignina */}</svg>;
     text = <><b>Lignina:</b> Polímero fenilpropanoide tridimensional, enlaces aleatorios entre anillos aromáticos formando red amorfa fortemente reticulada.</>;
   }
 
@@ -132,7 +246,6 @@ function MicrostructureModal({ type, onClose }) {
   );
 }
 
-// Exportación final del componente principal App
 export default function App() {
   const { progress, handleSliderChange } = useSliderProgress();
   const temp = Math.round(25 + progress * (600 - 25));
@@ -146,65 +259,62 @@ export default function App() {
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
   return (
-    <>
-      <div style={{ fontFamily: 'sans-serif', background: '#f7fafd', height: '100vh', overflow: 'hidden', color: '#111' }}>
-        <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 5 }}>
-          <h4 style={{ fontSize: '20px', color: '#333' }}>{TEMP_STAGES[stageIdx].label}</h4>
-        </div>
-        <div style={{ marginLeft: 'max(18px,3vw)', paddingTop: 40, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ maxWidth: 700, margin: '0 auto', padding: '0', width: '100%' }}>
-            <div className="main-card" style={{ background: 'rgba(255,255,255,0.85)', borderRadius: 32, boxShadow: '0 2px 16px #e0e0e0', padding: '2em', marginBottom: '2em', color: '#111' }}>
-              <h1 style={{ fontWeight: 800, fontSize: '2.2em', color: '#111', marginBottom: 8 }}>Biomasa molecular</h1>
-              <p style={{ color: '#111', fontSize: '1.15em', marginBottom: 24 }}>Haz clic en cada componente para explorar su microestructura real.</p>
-              <BiomassSVG onHotspot={setModal} hovered={hovered} setHovered={setHovered} setMouse={setMouse} stage={stageIdx} progress={progress} />
-            </div>
+    <div style={{ fontFamily: 'sans-serif', background: '#f7fafd', height: '100vh', overflow: 'hidden', color: '#111' }}>
+      <TemperatureBarScroll progress={progress} />
+      <PhaseTooltip stageIdx={stageIdx} temp={temp} visible={showTooltip} />
+      <div style={{ marginLeft: 'max(18px,3vw)', paddingTop: 40, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '0', width: '100%' }}>
+          <div className="main-card" style={{ background: 'rgba(255,255,255,0.85)', borderRadius: 32, boxShadow: '0 2px 16px #e0e0e0', padding: '2em', marginBottom: '2em', color: '#111' }}>
+            <h1 style={{ fontWeight: 800, fontSize: '2.2em', color: '#111', marginBottom: 8 }}>Biomasa molecular</h1>
+            <p style={{ color: '#111', fontSize: '1.15em', marginBottom: 24 }}>
+              Haz clic en cada componente para explorar su microestructura real.
+            </p>
+            <BiomassSVG onHotspot={setModal} hovered={hovered} setHovered={setHovered} setMouse={setMouse} stage={stageIdx} progress={progress} />
           </div>
         </div>
-
-        {/* Microstructure Modal */}
-        {modal && <MicrostructureModal type={modal} onClose={() => setModal(null)} />}
-
-        {/* Hover effect display */}
-        {hovered && (
-          <div style={{
-            position: 'fixed',
-            left: mouse.x + 16,
-            top: mouse.y + 8,
-            background: 'rgba(255,255,255,0.95)',
-            color: '#111',
-            borderRadius: '0.7em',
-            boxShadow: '0 2px 8px #e0e0e0',
-            padding: '0.5em 1em',
-            fontSize: '1em',
-            pointerEvents: 'none',
-            zIndex: 1001,
-            border: '1px solid #e0e0e0',
-            fontWeight: 600
-          }}>
-            {hovered.charAt(0).toUpperCase() + hovered.slice(1)}
-          </div>
-        )}
-
-        {/* Slider for controlling progress */}
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress * 100}
-          onChange={handleSliderChange}
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '80%',
-            zIndex: 2,
-            background: '#f5f5f5',
-            borderRadius: '15px',
-            height: '15px',
-          }}
-        />
       </div>
-    </>
+
+      {/* Microstructure Modal */}
+      {modal && <MicrostructureModal type={modal} onClose={() => setModal(null)} />}
+
+      {/* Hover effect display */}
+      {hovered && (
+        <div style={{
+          position: 'fixed',
+          left: mouse.x + 16,
+          top: mouse.y + 8,
+          background: 'rgba(255,255,255,0.95)',
+          color: '#111',
+          borderRadius: '0.7em',
+          boxShadow: '0 2px 8px #e0e0e0',
+          padding: '0.5em 1em',
+          fontSize: '1em',
+          pointerEvents: 'none',
+          zIndex: 1001,
+          border: '1px solid #e0e0e0',
+          fontWeight: 600
+        }}>
+          {hovered.charAt(0).toUpperCase() + hovered.slice(1)}
+        </div>
+      )}
+
+      {/* Slider for controlling progress */}
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={progress * 100}
+        onChange={handleSliderChange}
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '80%',
+          zIndex: 2,
+          background: 'transparent',
+        }}
+      />
+    </div>
   );
 }
