@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+const v = 0
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
